@@ -11,6 +11,8 @@ Primary Features :
 <li>Multi record selection (Shift + Click select all to clicked,Ctrl + Click add clicked to selection)</li>
 </ul>
 
+You can see a live demo of the examples here https://blazor.adventurouscoding.com/gridpage
+
 Most basic Grid setup
 
 ```c#
