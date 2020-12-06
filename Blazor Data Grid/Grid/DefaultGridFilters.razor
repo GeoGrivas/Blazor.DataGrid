@@ -1,0 +1,112 @@
+﻿@implements IGridFilters
+@typeparam TRecord
+<div class="filters-container ">
+    <button class="btn btn-secondary" @onclick="ToggleFilters">@GetShowHideText()</button>
+
+    @foreach (var filter in GridFilters.Where(x => !string.IsNullOrEmpty(x.Value)))
+    {
+        //filter-hint
+        <span class="badge badge-info">@filter.DisplayText:@filter.Value <button class="cancel-filter" @onclick="(()=>ClearFilter(filter.Id))">&times;</button></span>
+    }
+
+    <div class="filters" style="display:@GetFilterContainerCSS()">
+        <div>
+            <h5>Filters</h5>
+        </div>
+        <div class="form-row">
+            <CascadingValue Value="this">
+                @if (GridFilters != null)
+                {
+                    foreach (var gridFilter in GridFilters.Where(x => !x.IsExtra))
+                    {
+                        <Filter Id="gridFilter.Id" DisplayText="@gridFilter.DisplayText" Key="@gridFilter.FieldName" FilteringType="@gridFilter.FilteringType" Type="@gridFilter.Type">
+
+                        </Filter>
+                    }
+                }
+                @ExtraFilters
+            </CascadingValue>
+        </div>
+    </div>
+</div>
+@code {
+    [Parameter]
+    public RenderFragment ExtraFilters { get; set; }
+    [Parameter]
+    public List<GridFilter> GridFilters { get; set; } = new List<GridFilter>();
+    [CascadingParameter]
+    public Grid<TRecord> Grid { get; set; }
+    private bool ShowFilters = false;
+    public string GetFilterValue(int id)
+    {
+        return GridFilters.FirstOrDefault(x=>x.Id==id)?.Value;
+    }
+    public GridFilter GetGridFilter(int id)
+    {
+        return GridFilters.FirstOrDefault(x => x.Id == id);
+    }
+    private void SetFilters()
+    {
+        foreach (var column in Grid.GetColumns().Where(x => x.IsColumnFilter()))
+        {
+            if (GridFilters.FirstOrDefault(x => x.FieldName == column.GetHeaderText()) == null)
+            {
+                GridFilters.Add(new GridFilter {Id=GridFilters.Count()+1 ,Type=column.GetValueType(),IsExtra=false,FieldName = column.GetHeaderText(), FilteringType = column.GetFilteringType(),DisplayText=column.GetFilterDisplayText()});
+            }
+        }
+    }
+    private string GetShowHideText()
+    {
+        if (ShowFilters)
+            return "Hide";
+        return "Show";
+    }
+    public async Task ClearFilter(int Id)
+    {
+        GridFilters.First(x => x.Id == Id).Value = "";
+        
+            Grid.GridFilterValues = GridFilters;
+        
+        await Grid.GoToPage(0);
+    }
+    public async Task Go(GridFilter gridFilter)
+    {
+        if (GridFilters.FirstOrDefault(x => x.Id == gridFilter.Id) == null)
+        {
+            GridFilters.Add(new GridFilter {Id=gridFilter.Id, FieldName = gridFilter.FieldName, FilteringType = gridFilter.FilteringType, Value = gridFilter.Value });
+        }
+        GridFilters.First(x => x.Id == gridFilter.Id).Value = gridFilter.Value;
+        Grid.GridFilterValues = GridFilters;
+        
+        await Grid.GoToPage(0);
+    }
+    private void ToggleFilters()
+    {
+        ShowFilters = !ShowFilters;
+    }
+    private string GetFilterContainerCSS()
+    {
+        if (ShowFilters)
+        {
+            return "flex";
+        }
+        else
+        {
+            return "none";
+        }
+    }
+    public int GetGridFiltersCount()
+    {
+        return GridFilters.Count();
+    }
+    public void AddGridFilter(GridFilter gridFilter)
+    {
+        GridFilters.Add(gridFilter);
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        SetFilters();
+    }
+}

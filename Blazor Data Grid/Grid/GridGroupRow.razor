@@ -1,0 +1,58 @@
+﻿@typeparam TRecord
+@using Helpers
+
+<tr style="width:100%;">
+    <th colspan="4">
+        <span style="padding-left:@(50*Count+"px;") ">
+            @Group.Key.ToString()
+        </span>
+    </th>
+</tr>
+@if (Group.SubGroups != null && Group.SubGroups.Count() > 0)
+{
+    foreach (var subgroup in Group.SubGroups)
+    {
+        <CascadingValue TValue="IGrid" Value="Grid">
+            <GridGroupRow Group="subgroup" TRecord="TRecord"
+                          Delete="Delete"
+                          Edit="Edit"
+                          OnDeletePressed="OnDeletePressed"
+                          OnEditPressed="OnEditPressed"
+                          Count="@(Count+1)"
+                          ></GridGroupRow>
+        </CascadingValue>
+    }
+}
+else
+{
+    foreach (var item in Group.Items)
+    {
+        <CascadingValue TValue="IGrid" Value="Grid">
+            <DefaultGridRow TRecord="TRecord" Record="item" Delete="Delete"
+                            Edit="Edit"
+                            OnDeletePressed="OnDeletePressed"
+                            OnEditPressed="OnEditPressed"></DefaultGridRow>
+        </CascadingValue>
+    }
+}
+
+@code {
+    [Parameter]
+    public int Count { get; set; } = 0;
+    [CascadingParameter]
+    public IGrid Grid { get; set; }
+    [Parameter]
+    public GroupResult<TRecord> Group { get; set; }
+    [Parameter]
+    public bool Edit { get; set; }
+    [Parameter]
+    public bool OpenEdit { get; set; }
+
+    [Parameter]
+    public bool Delete { get; set; }
+    [Parameter]
+    public EventCallback<TRecord> OnDeletePressed { get; set; }
+    [Parameter]
+    public EventCallback<TRecord> OnEditPressed { get; set; }
+
+}

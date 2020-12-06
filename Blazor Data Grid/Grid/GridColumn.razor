@@ -1,0 +1,115 @@
+﻿@implements IGridColumn
+@if (Grid.HasOrdering())
+{
+    <th style="@InlineCss">
+        <button class="btn btn-sm btn-light" draggable="true" @ondragstart="(() => HandleDragStart())" @onclick="(async()=>await OnButtonClicked())">@GetHeaderText()@Grid.GetOrderSymbol(Field)</button>
+    </th>
+}
+else
+{
+    <th style="@InlineCss">
+        @GetHeaderText()
+    </th>
+}
+@code{
+    [CascadingParameter]
+    public IGrid Grid { get; set; }
+    [Parameter]
+    public string Field { get; set; }
+    [Parameter]
+    public string Width { get; set; }
+    [Parameter]
+    public string HeaderText { get; set; }
+    [Parameter]
+    public TextAlignOption? TextAlign { get; set; }
+    [Parameter]
+    public bool IsFilter { get; set; }
+    [Parameter]
+    public FilteringType FilteringType { get; set; }
+    [Parameter]
+    public Type ValueType { get; set; } = typeof(string);
+    [Parameter]
+    public string FilterDisplayText { get; set; }
+    private void HandleDragStart()
+    {
+        Grid.SetDraggingValue(Field);
+    }
+    private async Task OnButtonClicked()
+    {
+        var OrderingText = Grid.GetOrderSymbol(Field);
+        if (OrderingText == "")
+        {
+            OrderingText = "↑";
+            await Grid.OnOrderClicked(new GridOrderBy { OrderBy = Field, OrderByMethod = OrderByMethod.OrderBy });
+        }
+        else
+        if (OrderingText == "↑")
+        {
+            OrderingText = "↓";
+            await Grid.OnOrderClicked(new GridOrderBy { OrderBy = Field, OrderByMethod = OrderByMethod.OrderByDescending });
+        }
+        else
+        if (OrderingText == "↓")
+        {
+            OrderingText = "";
+            await Grid.RemoveOrdering(Field);
+        }
+    }
+    public Type GetValueType()
+    {
+        return ValueType;
+    }
+    public string GetFieldName()
+    {
+        return Field;
+    }
+    public bool IsColumnFilter()
+    {
+        return IsFilter;
+    }
+    public enum TextAlignOption
+    {
+        Center,
+        Left,
+        Right
+    }
+    public FilteringType GetFilteringType()
+    {
+        return FilteringType;
+    }
+    private string InlineCss;
+    public string GetCss()
+    {
+        return InlineCss;
+    }
+    private string CSSBuilder()
+    {
+        var inlineCss = "";
+        if (TextAlign != null)
+        {
+            inlineCss += "text-align:" + TextAlign.ToString() + ";";
+        }
+        if (!string.IsNullOrWhiteSpace(Width))
+        {
+            inlineCss += "width:" + Width + "px;";
+        }
+        return inlineCss;
+    }
+    public string GetHeaderText()
+    {
+        if (string.IsNullOrWhiteSpace(HeaderText))
+            return Field;
+        else
+            return HeaderText;
+    }
+    public string GetFilterDisplayText()
+    {
+        return string.IsNullOrWhiteSpace(FilterDisplayText) ? Field : FilterDisplayText;
+    }
+    protected override void OnInitialized()
+    {
+        InlineCss = CSSBuilder();
+        Grid.AddColumn(this);
+        StateHasChanged();
+    }
+}

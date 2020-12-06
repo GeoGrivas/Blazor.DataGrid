@@ -1,0 +1,455 @@
+﻿@typeparam TRecord
+@implements IGrid
+@using System.ComponentModel.DataAnnotations
+    <div class="@ShowLoader()" @onkeyup="KeyUpHandler" @onkeydown="KeyDownHandler">
+        @if (RenderFilters)
+        {
+            <CascadingValue Value="this">
+                @GridFilters
+            </CascadingValue>
+        }
+    <div style="height:35px;" ondragover="event.preventDefault();" @ondrop="OnDragDrop">
+        <span>Group by:</span>
+        @foreach(var i in GroupBy)
+        {
+        <span class="badge badge-info">@i <button class="cancel-filter" @onclick="(async()=>await CancelGrouping(i))">&times;</button></span>
+        }
+    </div>
+        @if(RecordOnEdit!=null)
+        { 
+        <GridRecordEditor TRecord="TRecord" RecordOnEdit="RecordOnEdit" GridColumns="Columns" OnEditSubmitted="OnEditRecordSubmit" OnEditCancelled="OnEditCancelled">
+
+        </GridRecordEditor>
+        }
+        <table class="grid-table">
+            <thead class="grid-thead">
+                <tr>
+                    @if (HasCheckboxSelect)
+                    {
+                        <th style="width:25px;"></th>
+                    }
+                    @if (HasDeleteButtons || HasEditButtons)
+                    {
+                        <th style="width:120px;align-content:center;"></th>
+                    }
+                  
+                    <CascadingValue Value="this">
+                        @GridColumns
+                    </CascadingValue>
+                </tr>
+
+
+            </thead>
+            <tbody class="grid-tbody">
+
+                @if (GroupedRecords != null)
+                {
+                    @foreach(var group in GroupedRecords)
+                    {
+                        <CascadingValue TValue="IGrid" Value="this">
+
+                        <GridGroupRow Group="group" TRecord="TRecord" Delete="HasDeleteButtons"
+                                                Edit="HasEditButtons"
+                                                OnDeletePressed="OnDeleteRecord"
+                                                OnEditPressed="OnEditPressed"></GridGroupRow>
+                        </CascadingValue>
+                    }
+                
+                }
+                else
+                {
+                    if(Records!=null)
+                    { 
+                    foreach (var record in Records)
+                    {
+                        <CascadingValue TValue="IGrid" Value="this">
+                            @if (CustomRow != null)
+                            {
+                                var obj = new GridRow<TRecord> { Grid = this, Record = record };
+                                <CascadingValue Value="obj">
+                                    @CustomRow(record)
+                                </CascadingValue>
+
+                            }
+                            else
+                            {
+                                <DefaultGridRow TRecord="TRecord"
+                                                Record="record"
+                                                Delete="HasDeleteButtons"
+                                                Edit="HasEditButtons"
+                                                OnDeletePressed="OnDeleteRecord"
+                                                OnEditPressed="OnEditPressed">
+
+                                </DefaultGridRow>
+                            }
+                        </CascadingValue>
+
+
+                        }
+                    }
+                }
+            </tbody>
+        </table>
+        <div>
+            <nav aria-label="Grid navigation">
+                <ul class="pagination">
+            @if (TotalRecords > NumberOfRecordsToDisplay)
+            {
+                var disabled = false;
+                if (currentPage == 0)
+                {
+                    disabled = true;
+                }
+                <li  class="page-item @(disabled?"disabled":"")">
+
+                <button class="page-link" disabled="@disabled" @onclick="(async () => await GoToPage(0))">@("<<")</button>
+                </li>
+                <li class="page-item @(disabled?"disabled":"")">
+
+                <button class="page-link" disabled="@disabled" @onclick="PrevPage">@("<")</button>
+                </li>
+                var startingNumber = 1;
+                if (currentPage > MaxPages / 2)
+                    startingNumber = (currentPage - (MaxPages / 2)) + 1;
+                if (startingNumber > 1)
+                {
+                    <li class="page-item disabled">
+
+                    <span class="page-link">...</span>
+                    </li>
+                }
+                var max = ((decimal)TotalRecords / (decimal)NumberOfRecordsToDisplay);
+                var max2 = Math.Ceiling(max);
+                for (decimal i = startingNumber; i <= max2; i++)
+                {
+                    var j = i;
+                    if (startingNumber + MaxPages == j)
+                    {
+                <li class="page-item disabled">
+
+                    <span class="page-link">...</span>
+                </li>
+                        break;
+                    }
+                    else
+                    {
+                        var classes = "";
+                        if (currentPage == (j - 1))
+                        {
+                            //current-page default css
+                            classes += " active";
+                        }
+                        <li class="page-item @classes">
+
+                        <button class=" page-link" @onclick="(async () => await GoToPage((int)j - 1))">@j</button>
+                        </li>
+                    }
+                }
+
+                {
+                    disabled = false;
+                    if (currentPage == max2 - 1)
+                    {
+                        disabled = true;
+                    }
+
+                    <li class="page-item @(disabled?"disabled":"")">
+
+                    <button class='page-link ' disabled="@disabled" @onclick="NextPage">></button>
+                    </li>
+                    <li class="page-item @(disabled?"disabled":"")">
+
+                    <button class="page-link" disabled="@disabled" @onclick="(async () => await GoToPage(((int)max2-1)))">>></button>
+                    </li>
+                }
+            }
+
+                </ul>
+            </nav>
+
+        </div>
+    </div>
+@code{
+    private async Task OnDragDrop(DragEventArgs e)
+    {
+        GroupBy.Add(DraggingValue);
+        await GoToPage(0);
+        DraggingValue = "";
+    }
+    public void SetDraggingValue(string value)
+    {
+        DraggingValue = value;
+    }
+    public string DraggingValue { get; set; }
+    [Parameter]
+    public bool Ordering { get; set; } = true;
+    [Parameter]
+    public bool MultipleOrdering { get; set; } = false;
+    [Parameter]
+    public bool HasDeleteButtons { get; set; }
+    [Parameter]
+    public bool HasEditButtons { get; set; }
+    [Parameter]
+    public bool HasCheckboxSelect { get; set; }
+    [Parameter]
+    public RenderFragment<TRecord> CustomRow { get; set; }
+    private IEnumerable<Helpers.GroupResult<TRecord>> GroupedRecords;
+    public List<string> GroupBy { get; set; } = new List<string>();
+    public List<TRecord> Records { get; set; }
+    async Task CancelGrouping(string group)
+    {
+        GroupBy.Remove(group);
+        await GoToPage(0);
+    }
+    [Parameter]
+    public RenderFragment GridColumns { get; set; }
+    [Parameter]
+    public int MaxPages { get; set; } = 5;
+    public List<IGridColumn> Columns { get; set; } = new List<IGridColumn>();
+    private int currentPage = 0;
+    [Parameter]
+    public int NumberOfRecordsToDisplay { get; set; } = 20;
+    [Parameter]
+    public int TotalRecords { get; set; } = 0;
+    [Parameter]
+    public RenderFragment GridFilters { get; set; }
+    [Parameter]
+    public IGridAdapter<TRecord> GridAdapter { get; set; } = null;
+    public List<GridFilter> GridFilterValues { get; set; } = new List<GridFilter>();
+    private List<GridOrderBy> OrderByList = new List<GridOrderBy>();
+    private TRecord RecordOnEdit = default;
+    public void OnEditCancelled()
+    {
+        RecordOnEdit = default(TRecord);
+    }
+    public bool HasOrdering()
+    {
+        return Ordering;
+    }
+    public async Task OnOrderClicked(GridOrderBy orderBy)
+    {
+        Loading = true;
+        if(MultipleOrdering)
+        {
+            if(OrderByList.Any(x=>x.OrderBy==orderBy.OrderBy))
+            {
+                OrderByList.Remove(OrderByList.First(x => x.OrderBy==orderBy.OrderBy));
+            }
+            OrderByList.Add(orderBy);
+            await GoToPage(currentPage);
+        }
+        else
+        {
+            if (OrderByList.Count() > 0)
+                OrderByList[0] = orderBy;
+            else
+                OrderByList.Add(orderBy);
+
+            await GoToPage(currentPage);
+
+        }
+        StateHasChanged();
+    }
+    public async Task OnDeleteRecord(TRecord record)
+    {
+        Loading = true;
+        await GridAdapter.OnRecordDelete(record);
+        //Records.Remove(record);
+        await GoToPage(currentPage);
+    }
+    public async Task RemoveOrdering(string field)
+    {
+        Loading = true;
+        OrderByList.Remove(OrderByList.First(x=>x.OrderBy==field));
+        await GoToPage(0);
+        StateHasChanged();
+    }
+    public async Task OnEditRecordSubmit(TRecord record)
+    {
+        Loading = true;
+        await GridAdapter.OnRecordEdit(RecordOnEdit,record);
+        await GoToPage(currentPage);
+        RecordOnEdit = default(TRecord);
+    }
+    public Type GetType()
+    {
+        return typeof(TRecord);
+    }
+    private bool SelectingMultiple = false;
+    private bool SelectingRange = false;
+    private bool Loading = false;
+    private bool RenderFilters = false;
+    private async Task PrevPage()
+    {
+        if (currentPage > 0)
+        {
+            Loading = true;
+            currentPage--;
+
+            await GoToPage(currentPage);
+            Loading = false;
+        }
+    }
+    private void OnEditPressed(TRecord Record)
+    {
+        RecordOnEdit = Record;
+    }
+    public bool ShouldRenderCheckbox()
+    {
+        return HasCheckboxSelect;
+    }
+    void KeyDownHandler(KeyboardEventArgs e)
+    {
+        if (e.ShiftKey)
+        {
+            SelectingRange = true;
+        }
+        else if (e.CtrlKey)
+            SelectingMultiple = true;
+
+    }
+    private async Task NextPage()
+    {
+        await GoToPage(currentPage + 1);
+    }
+
+    public async Task GoToPage(int page)
+    {
+        Loading = true;
+        currentPage = page;
+        if (GroupBy.Count() > 0)
+        {
+            Records = null;
+            GroupedRecords = (await GridAdapter.OnPageChange(currentPage, NumberOfRecordsToDisplay, OrderByList, GridFilterValues, GroupBy)).ToList();
+        }
+        else
+        {
+            GroupedRecords = null;
+            Records = (await GridAdapter.OnPageChange(currentPage, NumberOfRecordsToDisplay, OrderByList, GridFilterValues)).ToList();
+        }
+        TotalRecords = GridAdapter.GetRecordsCount();
+
+        Loading = false;
+        StateHasChanged();
+    }
+
+
+    private System.Reflection.PropertyInfo[] Properties;
+    private List<TRecord> SelectedRecords = new List<TRecord>();
+    protected override async Task OnInitializedAsync()
+    {
+        base.OnInitialized();
+        Loading = true;
+        Properties = typeof(TRecord).GetProperties();
+
+        await GoToPage(0);
+        TotalRecords = GridAdapter.GetRecordsCount();
+
+        RenderFilters = true;
+        Loading = false;
+    }
+    public string GetOrderSymbol(string Field)
+    {
+        var order = OrderByList.FirstOrDefault(x => x.OrderBy == Field);
+        if (order == null)
+            return string.Empty;
+        else if(order.OrderByMethod==OrderByMethod.OrderBy)
+        {
+            return "↑";
+        }else
+        {
+            return "↓";
+        }
+    }
+    public System.Reflection.PropertyInfo[] GetProperties()
+    {
+        return Properties;
+    }
+    public List<IGridColumn> GetColumns()
+    {
+        return Columns;
+    }
+    public List<TRecord> GetSelectedRecords()
+    {
+        return SelectedRecords;
+    }
+    public bool IsRecordSelected(object record)
+    {
+        return SelectedRecords.Contains((TRecord)record);
+    }
+    private string ShowLoader()
+    {
+        if (Loading)
+            return "lds-dual-ring";
+        return string.Empty;
+    }
+    public void SelectRecord(EventArgs e, object record)
+    {
+        if (HasCheckboxSelect)
+        {
+            if (SelectedRecords.Contains((TRecord)record))
+                SelectedRecords.Remove((TRecord)record);
+            else
+                SelectedRecords.Add((TRecord)record);
+        }
+        else if (SelectedRecords.Count() == 0)
+        {
+            SelectedRecords.Add((TRecord)record);
+        }
+        else if (SelectingRange)
+        {
+            if(GroupedRecords==null)
+            {
+                var firstSelectedRecord = SelectedRecords.First();
+                var lastRecordIndex = Records.IndexOf((TRecord)record);
+                var firstRecordIndex = Records.IndexOf(firstSelectedRecord);
+                SelectedRecords.Clear();
+                if (lastRecordIndex > firstRecordIndex)
+                {
+                    for (int i = firstRecordIndex; i <= lastRecordIndex; i++)
+                    {
+                        SelectedRecords.Add(Records[i]);
+                    }
+                }
+                else
+                {
+                    for (int i = firstRecordIndex; i >= lastRecordIndex; i--)
+                    {
+                        SelectedRecords.Add(Records[i]);
+                    }
+                }
+            }
+        }
+        else if (SelectedRecords.Contains((TRecord)record))
+            SelectedRecords.Remove((TRecord)record);
+        else if (SelectingMultiple)
+            SelectedRecords.Add((TRecord)record);
+        else
+        {
+            SelectedRecords.Clear();
+            SelectedRecords.Add((TRecord)record);
+        }
+        StateHasChanged();
+    }
+    public void AddColumn(IGridColumn column)
+    {
+        Columns.Add(column);
+        StateHasChanged();
+    }
+    private void KeyUpHandler(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            SelectedRecords.Clear();
+            StateHasChanged();
+        }
+        else if (e.Key == "Control")
+        {
+            SelectingMultiple = false;
+        }
+        else if (e.Key == "Shift")
+        {
+            SelectingRange = false;
+        }
+    }
+}

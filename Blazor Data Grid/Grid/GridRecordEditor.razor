@@ -1,0 +1,145 @@
+﻿@typeparam TRecord
+@using System.ComponentModel.DataAnnotations
+    <form class="border border-info">
+        <h5>Editing</h5>
+        <div class="p-5">
+            <div class="form-row">
+
+                @foreach (var property in RecordOnEdit.GetType().GetProperties().Where(x => Fields.Contains(x.Name)))
+                {
+                    <div class="form-group col-md-4">
+
+                        @if (property.PropertyType == typeof(bool))
+                        {
+                            bool x = (bool)property.GetValue(TempRecord);
+                            if (x)
+                            {
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" id="@property.Name" checked type="checkbox" @onchange="((e)=>OnKeyUpEdit(e.Value,property.Name))" />
+                                    <label class="form-check-label" for="@property.Name">
+                                        @property.Name
+                                    </label>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" id="@property.Name" type="checkbox" @onchange="((e)=>OnKeyUpEdit(e.Value,property.Name))" />
+                                    <label class="form-check-label" for="@property.Name">
+                                        @property.Name
+                                    </label>
+                                </div>
+
+                            }
+                        }
+                        else
+                        {
+                            <label for="@property.Name">
+                                @property.Name
+                            </label>
+                            <input class="form-control-sm form-control @GetValidClass(property.Name)" id="@property.Name" @oninput="((e)=>OnKeyUpEdit(e.Value,property.Name))" value="@property.GetValue(TempRecord)" />
+                            {
+                                var validationErrors = ValidationResults.FirstOrDefault(x => x.Key == property.Name);
+                                if (validationErrors.Value != null)
+                                {
+                                    <div class="invalid-feedback">
+                                        @foreach (var error in validationErrors.Value)
+                                        {
+                                            <p>@error.ErrorMessage</p>
+                                        }
+                                    </div>
+                                }
+                            }
+                        }
+                    </div>
+                }
+
+            </div>
+            <div class="float-right">
+                <button class="grid-edit-cancel btn btn-secondary" @onclick="CancelEditClicked" type="button">Cancel</button>
+                <button class="grid-edit-save btn btn-primary" @onclick="OnEditSubmit" type="button">Save</button>
+            </div>
+        </div>
+    </form>
+
+@code {
+    TRecord RecordOnEditCopy;
+    [Parameter]
+    public TRecord RecordOnEdit { get; set; }
+    [Parameter]
+    public List<IGridColumn> GridColumns { get; set; }
+    [Parameter]
+    public EventCallback OnEditCancelled { get; set; }
+    [Parameter]
+    public EventCallback<TRecord> OnEditSubmitted { get; set; }
+    private TRecord TempRecord;
+    private Dictionary<string, object> Values = new Dictionary<string, object>();
+    private Dictionary<string, List<ValidationResult>> ValidationResults = new Dictionary<string, List<ValidationResult>>();
+    private List<string> Fields = new List<string>();
+    private async Task CancelEditClicked()
+    {
+        await OnEditCancelled.InvokeAsync(null);
+    }
+    public void OnEditSubmit()
+    {
+        OnEditSubmitted.InvokeAsync(TempRecord);
+    }
+    private string GetValidClass(string key)
+    {
+        var validationErrors = ValidationResults.FirstOrDefault(x => x.Key == key);
+        if(validationErrors.Value!=null && validationErrors.Value.Count()>0)
+        {
+            return "is-invalid";
+        }
+        else
+        {
+            return "";
+        }
+    }
+    public void OnKeyUpEdit(object value, string memberName)
+    {
+        var propertyInfo = TempRecord.GetType().GetProperty(memberName);
+        var convertedValue = Convert.ChangeType(value, propertyInfo.PropertyType);
+        propertyInfo.SetValue(TempRecord, convertedValue);
+
+        var context = new ValidationContext(TempRecord);
+        var results = new List<ValidationResult>();
+        context.MemberName = memberName;
+        foreach (var validation in ValidationResults.Where(x => x.Key == memberName))
+        {
+            ValidationResults.Remove(memberName);
+        }
+        if (!Validator.TryValidateProperty(convertedValue, context, results))
+        {
+            ValidationResults.Add(memberName, results);
+        }
+    }
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        foreach (var GridColumn in GridColumns)
+        {
+            Fields.Add(GridColumn.GetFieldName());
+        }
+        TempRecord = (TRecord)Activator.CreateInstance(typeof(TRecord));
+        foreach (var property in TempRecord.GetType().GetProperties())
+        {
+            property.SetValue(TempRecord, property.GetValue(RecordOnEdit));
+        }
+        RecordOnEditCopy = RecordOnEdit;
+    }
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if (!RecordOnEdit.Equals(RecordOnEditCopy))
+        {
+            foreach (var property in TempRecord.GetType().GetProperties())
+            {
+                property.SetValue(TempRecord, property.GetValue(RecordOnEdit));
+            }
+            RecordOnEditCopy = RecordOnEdit;
+        }
+    }
+
+}

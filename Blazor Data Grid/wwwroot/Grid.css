@@ -1,0 +1,131 @@
+﻿
+.current-page {
+    cursor: not-allowed;
+    pointer-events: none;
+    background-color:blue;
+}
+.grid-tbody > tr.selected {
+    background-color: darkgray !important;
+}
+
+    .grid-tbody > tr.selected:hover {
+        background-color: darkgray !important;
+    }
+
+.grid-table {
+    display: table;
+    table-layout: fixed;
+    border-collapse: collapse;
+    width: 100%;
+    font-family: "Roboto", "Segoe UI", "GeezaPro", "DejaVu Serif", "sans-serif", "-apple-system", "BlinkMacSystemFont";
+}
+
+    .grid-table > thead > tr > th {
+        text-align: center;
+        font-size: 12px;
+        text-decoration: none;
+        font-weight: normal;
+        color: gray;
+    }
+
+.grid-tbody > tr > td {
+    width: 100px;
+    text-align: center;
+    font-size: 12px;
+    padding: 5px;
+    overflow-wrap: break-word;
+}
+
+.grid-table > table, tr {
+    border: 0.5px solid lightgray;
+}
+
+.grid-tbody > tr:hover {
+    background-color: lightgray !important;
+}
+
+
+.lds-dual-ring {
+    position: relative;
+    background-color: rgba(106, 106, 106, 0.05);
+}
+
+    .lds-dual-ring:before {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        z-index: 100;
+        content: " ";
+        display: block;
+        width: 64px;
+        height: 64px;
+        margin: auto;
+        border-radius: 50%;
+        border: 6px solid red;
+        border-color: red transparent red transparent;
+        animation: lds-dual-ring 1.2s linear infinite;
+    }
+
+@keyframes lds-dual-ring {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.filters-container {
+    border: 1px solid lightgray;
+    padding-bottom: 1px;
+}
+
+.filter-hint {
+    background-color: mediumblue;
+    color: white;
+    font-size: 14px;
+    padding: 5px;
+}
+
+.cancel-filter {
+    color: white;
+    font-size: 18px;
+    background-color: transparent;
+    border: 0;
+}
+
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    min-height: 50px;
+    position: relative;
+    width: 100%;
+}
+
+.filter {
+    padding: 2px;
+}
+
+    .filter > label {
+        display: inline-block;
+        margin: auto;
+    }
+
+    .filter > input {
+        display: block;
+    }
+
+.filters-container-hide {
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+.filters-submit {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+}

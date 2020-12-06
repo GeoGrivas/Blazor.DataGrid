@@ -1,0 +1,107 @@
+﻿<div class="filter form-group col-md-4">
+    <label>@GridFilter.DisplayText</label>
+    @if (Type == typeof(DateTime))
+    {
+        <input type="date" @onchange="(async (ChangeEventArgs e) => await GetDate(e.Value.ToString()))"/>
+    }
+    @if(Type==typeof(bool))
+    {
+        <select class="form-control-sm form-control"  @onchange="(async (ChangeEventArgs e)=>await GridFilters.Go(new GridFilter { Id=Id,FieldName=Key,FilteringType=FilteringType,Value=e.Value.ToString()}))">
+            <option value="" selected></option>
+            <option value="true">True</option>
+            <option false="false">False</option>
+        </select>
+    }
+    else
+    {
+        <input class="form-control-sm form-control" type="@GetHTMLType()" value="@GridFilter.Value" @onchange="(async (ChangeEventArgs e)=>await GridFilters.Go(new GridFilter { Id=Id,FieldName=Key,FilteringType=FilteringType,Value=e.Value.ToString()}))" />
+    }
+</div>
+@code {
+    [Parameter]
+    public string DisplayText { get; set; }
+    [Parameter]
+    public int Id { get; set; }
+    [Parameter]
+    public FilteringType FilteringType { get; set; }
+    [Parameter]
+    public string Key { get; set; }
+    [Parameter]
+    public Type Type { get; set; } = typeof(string);
+    [CascadingParameter]
+    public IGridFilters GridFilters { get; set; }
+
+    private GridFilter GridFilter { get; set; } = new GridFilter();
+    private string GetHTMLType()
+    {
+        if (Type.Name == "string")
+            return "text";
+        else if (Type == typeof(bool))
+            return "checkbox";
+        else if (Type == typeof(DateTime))
+            return "date";
+        else if (IsNumericType(Type))
+            return "number";
+
+        return "text";
+    }
+    private async Task GetDate(string result)
+    {
+        await GridFilters.Go(new GridFilter {Id=Id,FieldName=Key,FilteringType=FilteringType,Value=result});
+    }
+    private bool IsNumericType(Type t)
+    {
+        switch (Type.GetTypeCode(t))
+        {
+            case TypeCode.Byte:
+            case TypeCode.SByte:
+            case TypeCode.UInt16:
+            case TypeCode.UInt32:
+            case TypeCode.UInt64:
+            case TypeCode.Int16:
+            case TypeCode.Int32:
+            case TypeCode.Int64:
+            case TypeCode.Decimal:
+            case TypeCode.Double:
+            case TypeCode.Single:
+                return true;
+            default:
+                return false;
+        }
+    }
+    private bool IsIntType(Type t)
+    {
+        switch (Type.GetTypeCode(t))
+        {
+            case TypeCode.Byte:
+            case TypeCode.SByte:
+            case TypeCode.UInt16:
+            case TypeCode.UInt32:
+            case TypeCode.UInt64:
+            case TypeCode.Int16:
+            case TypeCode.Int32:
+            case TypeCode.Int64:
+            case TypeCode.Decimal:
+            case TypeCode.Double:
+            case TypeCode.Single:
+                return true;
+            default:
+                return false;
+        }
+    }
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if(string.IsNullOrWhiteSpace(DisplayText))
+        {
+            DisplayText = Key;
+        }
+        if(Id==0)
+        {
+            Id = GridFilters.GetGridFiltersCount() + 1;
+            var gridFilter = new GridFilter {Id=Id, FieldName = Key, FilteringType = FilteringType, IsExtra = true, Type = Type,DisplayText=DisplayText};
+            GridFilters.AddGridFilter(gridFilter);
+        }
+        GridFilter = GridFilters.GetGridFilter(Id);
+    }
+}

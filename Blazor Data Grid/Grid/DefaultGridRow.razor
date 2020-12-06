@@ -1,0 +1,74 @@
+﻿@typeparam TRecord
+<tr tabindex="0" class="@RowCssClasses(Record)" @onclick="((e)=>RowClicked(e,Record))">
+    @if (Grid.ShouldRenderCheckbox())
+    {
+
+        if (Grid.IsRecordSelected(Record))
+        {
+            <td><input type="checkbox" checked @onchange="((e) => Grid.SelectRecord(e,Record))" /></td>
+        }
+        else
+        {
+            <td><input type="checkbox" @onchange="((e) => Grid.SelectRecord(e,Record))" /></td>
+
+        }
+    }
+    @if (Edit || Delete)
+    {
+        <td>
+            @if (Edit)
+            {
+                <button class="btn btn-primary btn-sm" @onclick="(async()=>await OnEditPressed.InvokeAsync(Record))">Edit</button>
+            }
+            @if (Delete)
+            {
+                <button class="btn btn-danger btn-sm" @onclick="( async()=> await OnDeletePressed.InvokeAsync(Record))">Delete</button>
+            }
+        </td>
+    }
+    @foreach (var column in Grid.GetColumns())
+    {
+        <td style="@column.GetCss()">@(Grid.GetProperties().FirstOrDefault(x => x.Name == column.GetFieldName()).GetValue(Record))</td>
+    }
+</tr>
+
+@code{
+    [CascadingParameter]
+    public IGrid Grid { get; set; }
+    [Parameter]
+    public TRecord Record { get; set; }
+    [Parameter]
+    public bool Edit { get; set; }
+    [Parameter]
+    public bool OpenEdit { get; set; }
+    private EditContext editContext;
+
+    [Parameter]
+    public bool Delete { get; set; }
+    [Parameter]
+    public EventCallback<TRecord> OnDeletePressed { get; set; }
+    [Parameter]
+    public EventCallback<TRecord> OnEditPressed { get; set; }
+    public string RowCssClasses(TRecord record)
+    {
+        var classes = "";
+        if (Grid.IsRecordSelected(record))
+            classes += "selected";
+        return classes;
+    }
+    private void RowClicked(MouseEventArgs e, TRecord Record)
+    {
+        if (Grid.ShouldRenderCheckbox())
+            return;
+        Grid.SelectRecord(e, Record);
+    }
+    private void OpenEditBox()
+    {
+        OpenEdit = !OpenEdit;
+        StateHasChanged();
+    }
+    protected override void OnInitialized()
+    {
+        editContext = new EditContext(Record);
+    }
+}
