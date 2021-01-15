@@ -30,6 +30,19 @@ else
     public Type ValueType { get; set; } = typeof(string);
     [Parameter]
     public string FilterDisplayText { get; set; }
+    [Parameter]
+    public EventCallback<object> CustomEventCallback { get; set; }
+    [Parameter]
+    public RenderFragment<object> Child{get;set;}
+
+    public EventCallback<object> GetEventCallback()
+    {
+        return CustomEventCallback;
+    }
+    public RenderFragment<object> GetChild()
+    {
+        return Child;
+    }
     private void HandleDragStart()
     {
         Grid.SetDraggingValue(Field);

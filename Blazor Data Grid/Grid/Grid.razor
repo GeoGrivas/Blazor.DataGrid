@@ -42,7 +42,7 @@
             </thead>
             <tbody class="grid-tbody">
 
-                @if (GroupedRecords != null)
+                @if (GroupedRecords != null && GroupedRecords.Count()>0)
                 {
                     @foreach(var group in GroupedRecords)
                     {

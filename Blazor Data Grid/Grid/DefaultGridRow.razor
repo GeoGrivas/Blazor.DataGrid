@@ -1,4 +1,5 @@
 ﻿@typeparam TRecord
+@using Blazor.DataGrid.Helpers
 <tr tabindex="0" class="@RowCssClasses(Record)" @onclick="((e)=>RowClicked(e,Record))">
     @if (Grid.ShouldRenderCheckbox())
     {
@@ -28,11 +29,21 @@
     }
     @foreach (var column in Grid.GetColumns())
     {
-        <td style="@column.GetCss()">@(Grid.GetProperties().FirstOrDefault(x => x.Name == column.GetFieldName()).GetValue(Record))</td>
+        if(column.GetChild()!=null)
+        {
+            <td>
+              @column.GetChild()(Record)
+            </td>
+        }
+        <td style="@column.GetCss()">
+            @(ReflectionHelpers.GetNestedPropValue(column.GetFieldName(),Record))
+        </td>
     }
 </tr>
 
 @code{
+    [Parameter]
+    public RenderFragment<TRecord> CustomRow { get; set; }
     [CascadingParameter]
     public IGrid Grid { get; set; }
     [Parameter]
@@ -49,6 +60,7 @@
     public EventCallback<TRecord> OnDeletePressed { get; set; }
     [Parameter]
     public EventCallback<TRecord> OnEditPressed { get; set; }
+
     public string RowCssClasses(TRecord record)
     {
         var classes = "";
